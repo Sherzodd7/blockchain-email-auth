@@ -1,0 +1,28 @@
+# Виртуальное окружение
+venv/
+
+# Python кэш
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Логи
+logs/*.log
+
+# База данных (у каждого своя)
+database/email_auth.db
+
+# RSA приватный ключ (секретный!)
+keys/private_key.pem
+
+# Mock хранилище
+keys/mock_registry.json
+keys/contract_address.txt
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
+desktop.ini

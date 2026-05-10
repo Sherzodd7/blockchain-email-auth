@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BlockchainMail</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    body { animation: pagefade 0.3s ease-in; }
+    @keyframes pagefade { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation ─────────────────────────────────────────────────────────── -->
+<nav class="navbar">
+  <a class="navbar-brand" href="#">
+    <span class="icon">🔐</span> BlockchainMail
+  </a>
+  <div class="nav-links">
+    <a href="#" onclick="showTab('send')"      id="tab-send"      class="active">✉️ Send</a>
+    <a href="#" onclick="showTab('verify')"    id="tab-verify">🔍 Verify</a>
+    <a href="#" onclick="showTab('dashboard')" id="tab-dashboard">📊 Dashboard</a>
+  </div>
+  <div class="nav-status">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">Checking…</span>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- ════════════════════════════════════════════
+       TAB 1 — SEND
+  ════════════════════════════════════════════ -->
+  <div class="tab-content active" id="tab-send-content">
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">✉️</span>
+        <div>
+          <h2>Send Secure Message</h2>
+          <p style="font-size:.85rem;color:var(--text-muted);margin-top:2px;">
+            Message is SHA-256 hashed, RSA-signed, and anchored on the blockchain.
+          </p>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Sender Email</label>
+        <input type="email" id="email" placeholder="alice@example.com" autocomplete="off"/>
+      </div>
+
+      <div class="form-group">
+        <label for="message">Message Body</label>
+        <textarea id="message" placeholder="Type your secure message here…"></textarea>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="sendBtn" onclick="sendMessage()">
+        <span class="spinner" id="sendSpinner"></span>
+        🔒 Send Secure
+      </button>
+
+      <div class="alert alert-error" id="sendError">
+        <span class="alert-icon">❌</span>
+        <span id="sendErrorText"></span>
+      </div>
+      <div class="alert alert-warning" id="phishingAlert">
+        <span class="alert-icon">🚨</span>
+        <span id="phishingText"></span>
+      </div>
+    </div>
+
+    <!-- Result Panel -->
+    <div class="card result-panel" id="resultPanel">
+      <div class="card-header">
+        <span class="card-icon">✅</span>
+        <h2>Message Authenticated</h2>
+      </div>
+
+      <div class="result-row">
+        <span class="result-key">Status</span>
+        <span class="result-value" id="resStatus"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-key">Trust Score</span>
+        <span class="result-value" id="resTrust"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-key"></span>
+        <span class="result-value" style="width:100%">
+          <div class="trust-bar-wrap" style="width:200px;margin-left:auto">
+            <div class="trust-bar-bg">
+              <div class="trust-bar-fill" id="trustBar" style="width:0%"></div>
+            </div>
+          </div>
+        </span>
+      </div>
+      <div class="result-row">
+        <span class="result-key">SHA-256 Hash</span>
+        <span class="result-value" style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
+          <span class="result-value mono" id="resHash" style="font-size:.75rem;word-break:break-all"></span>
+          <button onclick="copyText('resHash')"
+            style="background:none;border:1px solid var(--border);border-radius:4px;
+                   color:var(--text-muted);padding:2px 8px;cursor:pointer;font-size:.75rem;
+                   white-space:nowrap;flex-shrink:0">
+            📋 copy
+          </button>
+        </span>
+      </div>
+      <div class="result-row">
+        <span class="result-key">TX Hash</span>
+        <span class="result-value mono" id="resTx"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-key">Blockchain</span>
+        <span class="result-value" id="resBC"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-key">Signature (b64)</span>
+        <span class="result-value" style="display:flex;align-items:center;gap:8px;justify-content:flex-end">
+          <span class="mono" id="resSig" style="font-size:.72rem;word-break:break-all"></span>
+          <button onclick="copyText('resSig')"
+            style="background:none;border:1px solid var(--border);border-radius:4px;
+                   color:var(--text-muted);padding:2px 8px;cursor:pointer;font-size:.75rem;
+                   white-space:nowrap;flex-shrink:0">
+            📋 copy
+          </button>
+        </span>
+      </div>
+
+      <div class="phishing-banner" id="phishingBanner">
+        <span style="font-size:1.4rem">🚫</span>
+        <div>
+          <strong>Phishing Risk Detected</strong>
+          <div id="phishingFlags" style="margin-top:4px;opacity:.8"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-send-content -->
+
+
+  <!-- ════════════════════════════════════════════
+       TAB 2 — VERIFY
+  ════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-verify-content">
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">🔍</span>
+        <div>
+          <h2>Verify Message Authenticity</h2>
+          <p style="font-size:.85rem;color:var(--text-muted);margin-top:2px;">
+            Checks digital signature + blockchain hash registration.
+          </p>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="verifyMessage">Original Message</label>
+        <textarea id="verifyMessage" placeholder="Paste the original message text…"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="verifySignature">Base64 Signature</label>
+        <textarea id="verifySignature"
+          style="min-height:80px;font-family:monospace;font-size:.82rem"
+          placeholder="Paste the base64-encoded RSA signature…"></textarea>
+      </div>
+
+      <button class="btn btn-success btn-full" id="verifyBtn" onclick="verifyMessage()">
+        <span class="spinner" id="verifySpinner"></span>
+        🔍 Verify Authenticity
+      </button>
+
+      <div class="alert alert-error" id="verifyError">
+        <span class="alert-icon">❌</span>
+        <span id="verifyErrorText"></span>
+      </div>
+    </div>
+
+    <!-- Verdict -->
+    <div class="card result-panel" id="verdictPanel">
+      <div class="verdict" id="verdictBox">
+        <div class="verdict-icon"   id="verdictIcon"></div>
+        <div class="verdict-text"   id="verdictText"></div>
+        <div class="verdict-detail" id="verdictDetail"></div>
+      </div>
+
+      <div class="result-row">
+        <span class="result-key">Signature Valid</span>
+        <span class="result-value" id="detSig"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-key">Hash on Blockchain</span>
+        <span class="result-value" id="detChain"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-key">SHA-256 Hash</span>
+        <span class="result-value mono" id="detHash"></span>
+      </div>
+      <div class="result-row" id="detTxRow" style="display:none">
+        <span class="result-key">Block Timestamp</span>
+        <span class="result-value" id="detTs"></span>
+      </div>
+    </div>
+
+  </div><!-- /tab-verify-content -->
+
+
+  <!-- ════════════════════════════════════════════
+       TAB 3 — DASHBOARD
+  ════════════════════════════════════════════ -->
+  <div class="tab-content" id="tab-dashboard-content">
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-icon">📊</span>
+        <h2>System Overview</h2>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="statTotal">—</div>
+          <div class="stat-label">Total Messages</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-green)" id="statValid">—</div>
+          <div class="stat-label">Valid</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-red)" id="statInvalid">—</div>
+          <div class="stat-label">Invalid</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-yellow)" id="statTampered">—</div>
+          <div class="stat-label">Tampered</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-purple)" id="statPhishing">—</div>
+          <div class="stat-label">Phishing</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-blue)" id="statOnChain">—</div>
+          <div class="stat-label">On-Chain</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header" style="justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="card-icon">📋</span>
+          <h2>Message History</h2>
+        </div>
+        <button class="btn btn-primary"
+          style="padding:8px 16px;font-size:.85rem"
+          onclick="loadDashboard()">
+          🔄 Refresh
+        </button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Email</th>
+              <th>Message</th>
+              <th>Status</th>
+              <th>Trust</th>
+              <th>TX Hash</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="messagesBody">
+            <tr>
+              <td colspan="7"
+                style="text-align:center;color:var(--text-muted);padding:32px">
+                Loading…
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /tab-dashboard-content -->
+
+</div><!-- /container -->
+
+
+<!-- ── Scripts ─────────────────────────────────────────────────────────────── -->
+<script>
+  // API endpoint — объявляем ОДИН раз для всех JS файлов
+  const API = "http://127.0.0.1:5000/api";
+</script>
+<script src="js/send.js"></script>
+<script src="js/verify.js"></script>
+<script src="js/dashboard.js"></script>
+
+<script>
+// ── Tab switching ─────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll(".tab-content").forEach(el => {
+    el.classList.remove("active");
+  });
+  document.querySelectorAll(".nav-links a").forEach(el => {
+    el.classList.remove("active");
+  });
+  document.getElementById("tab-" + name + "-content").classList.add("active");
+  document.getElementById("tab-" + name).classList.add("active");
+  if (name === "dashboard") loadDashboard();
+  if (name === "verify")    prefillVerify();
+}
+
+// ── Автозаполнение Verify из последнего Send ──────────────────────────────
+function prefillVerify() {
+  const msg = localStorage.getItem("last_message");
+  const sig = localStorage.getItem("last_signature");
+  if (msg) document.getElementById("verifyMessage").value   = msg;
+  if (sig) document.getElementById("verifySignature").value = sig;
+}
+
+// ── Copy to clipboard ─────────────────────────────────────────────────────
+function copyText(elementId) {
+  const text = document.getElementById(elementId).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    alert("Скопировано!");
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+checkStatus();
+</script>
+
+</body>
+</html>
